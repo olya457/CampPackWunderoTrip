@@ -1,7 +1,8 @@
 import React from 'react';
-import {ImageBackground, StatusBar, StyleSheet, Text, View} from 'react-native';
+import {ImageBackground, StatusBar, StyleSheet, Text} from 'react-native';
 import {WebView} from 'react-native-webview';
 import {assets} from '../assets';
+import {FadeInView} from '../components/ui';
 import {colors} from '../theme/colors';
 
 const loaderHtml = `
@@ -75,7 +76,7 @@ html, body {
 export const SplashScreen = () => (
   <ImageBackground source={assets.splashBackground} resizeMode="cover" style={styles.root}>
     <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-    <View style={styles.center}>
+    <FadeInView style={styles.center} duration={620} distance={0}>
       <WebView
         originWhitelist={['*']}
         source={{html: loaderHtml}}
@@ -86,8 +87,10 @@ export const SplashScreen = () => (
         androidLayerType="software"
         containerStyle={styles.webContainer}
       />
-    </View>
-    <Text style={styles.footer}>EXPLORE · PACK · DISCOVER</Text>
+    </FadeInView>
+    <FadeInView style={styles.footerWrap} delay={220} duration={620} distance={8}>
+      <Text style={styles.footer}>EXPLORE · PACK · DISCOVER</Text>
+    </FadeInView>
   </ImageBackground>
 );
 
@@ -112,12 +115,14 @@ const styles = StyleSheet.create({
     height: 96,
     width: 96,
   },
-  footer: {
+  footerWrap: {
     bottom: 34,
+    position: 'absolute',
+  },
+  footer: {
     color: colors.blue,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2,
-    position: 'absolute',
   },
 });

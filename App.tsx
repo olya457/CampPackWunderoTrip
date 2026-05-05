@@ -70,6 +70,23 @@ const App = (): React.JSX.Element => {
     }));
   };
 
+  const addCustomChecklistItem = (id: string, item: string) => {
+    updateState(current => ({
+      ...current,
+      customChecklists: current.customChecklists.map(list => {
+        if (list.id !== id) {
+          return list;
+        }
+
+        const exists = list.items.some(
+          value => value.trim().toLowerCase() === item.trim().toLowerCase(),
+        );
+
+        return exists ? list : {...list, items: [...list.items, item.trim()]};
+      }),
+    }));
+  };
+
   const toggleChecklistItem = (key: string, item: string) => {
     updateState(current => {
       const completed = current.checklistProgress[key] ?? [];
@@ -165,6 +182,7 @@ const App = (): React.JSX.Element => {
         isCustom={route.isCustom}
         onBack={() => setRoute({name: 'tabs'})}
         onToggleItem={toggleChecklistItem}
+        onAddCustomItem={addCustomChecklistItem}
         onReset={resetChecklist}
       />
     );

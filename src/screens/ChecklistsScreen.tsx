@@ -22,6 +22,7 @@ const customEmojis = ['📦', '🏕️', '🎒', '🧗', '🌿', '🔦', '🪓',
 const letterRows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
 const numberRows = ['1234567890', '-_/&()', '.,!?'];
 const titleLimit = 36;
+const itemLimit = 42;
 
 export const ChecklistsScreen = ({
   state,
@@ -267,6 +268,7 @@ type ChecklistDetailScreenProps = {
   isCustom: boolean;
   onBack: () => void;
   onToggleItem: (key: string, item: string) => void;
+  onAddCustomItem: (id: string, item: string) => void;
   onReset: (key: string) => void;
 };
 
@@ -276,8 +278,13 @@ export const ChecklistDetailScreen = ({
   isCustom,
   onBack,
   onToggleItem,
+  onAddCustomItem,
   onReset,
 }: ChecklistDetailScreenProps) => {
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [itemTitle, setItemTitle] = useState('');
+  const [itemKeyboardMode, setItemKeyboardMode] = useState<'letters' | 'numbers'>('letters');
+  const [itemShift, setItemShift] = useState(true);
   const key = isCustom ? `custom:${checklistId}` : checklistId;
   const template = packingTemplates.find(item => item.id === checklistId);
   const custom = state.customChecklists.find(item => item.id === checklistId);
@@ -295,6 +302,48 @@ export const ChecklistDetailScreen = ({
 
   const completed = state.checklistProgress[key] ?? [];
   const percent = items.length ? Math.round((completed.length / items.length) * 100) : 0;
+
+  const appendItemTitle = (value: string) => {
+    setItemTitle(current => {
+      if (current.length >= itemLimit) {
+        return current;
+      }
+      const shouldCapitalize =
+        itemKeyboardMode === 'letters' &&
+        (itemShift || current.length === 0 || current.endsWith(' '));
+      const next = shouldCapitalize ? value.toUpperCase() : value;
+      return `${current}${next}`.slice(0, itemLimit);
+    });
+    if (itemKeyboardMode === 'letters' && itemShift) {
+      setItemShift(false);
+    }
+  };
+
+  const eraseItemTitle = () => {
+    setItemTitle(current => current.slice(0, -1));
+  };
+
+  const addItemSpace = () => {
+    setItemTitle(current => {
+      if (!current || current.endsWith(' ') || current.length >= itemLimit) {
+        return current;
+      }
+      return `${current} `.slice(0, itemLimit);
+    });
+    setItemShift(true);
+  };
+
+  const addItem = () => {
+    const trimmed = itemTitle.trim();
+    if (!trimmed || !isCustom) {
+      return;
+    }
+    onAddCustomItem(checklistId, trimmed);
+    setItemTitle('');
+    setItemKeyboardMode('letters');
+    setItemShift(true);
+    setAddModalVisible(false);
+  };
 
   if (!list) {
     return (
@@ -321,27 +370,94 @@ export const ChecklistDetailScreen = ({
             {completed.length}/{items.length} items completed
           </Text>
         </View>
-        <IconButton label="🔄" onPress={() => onReset(key)} size={42} />
+        {isCustom ? (
+          <IconButton label="➕" active onPress={() => setAddModalVisible(true)} size={42} />
+        ) : (
+          <IconButton label="🔄" onPress={() => onReset(key)} size={42} />
+        )}
       </View>
       <ProgressBar value={percent} />
-      <View style={styles.itemList}>
-        {items.map(item => {
-          const checked = completed.includes(item);
-          return (
-            <Pressable
-              key={item}
-              accessibilityRole="checkbox"
-              accessibilityState={{checked}}
-              onPress={() => onToggleItem(key, item)}
-              style={({pressed}) => [styles.itemRow, checked && styles.itemRowDone, pressed && styles.pressed]}>
-              <View style={[styles.checkbox, checked && styles.checkboxDone]}>
-                {checked ? <Text style={styles.checkmark}>✅</Text> : null}
-              </View>
-              <Text style={[styles.itemText, checked && styles.itemTextDone]}>{item}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {items.length === 0 && isCustom ? (
+        <Card style={styles.emptyFolder}>
+          <Text style={styles.emptyFolderIcon}>🧺</Text>
+          <Text style={styles.emptyFolderTitle}>No items yet</Text>
+          <Text style={styles.emptyFolderText}>Add gear to this folder and check it off here</Text>
+          <PrimaryButton
+            label="Add First Item"
+            icon="➕"
+            onPress={() => setAddModalVisible(true)}
+            style={styles.emptyFolderButton}
+          />
+        </Card>
+      ) : (
+        <View style={styles.itemList}>
+          {items.map(item => {
+            const checked = completed.includes(item);
+            return (
+              <Pressable
+                key={item}
+                accessibilityRole="checkbox"
+                accessibilityState={{checked}}
+                onPress={() => onToggleItem(key, item)}
+                style={({pressed}) => [
+                  styles.itemRow,
+                  checked && styles.itemRowDone,
+                  pressed && styles.pressed,
+                ]}>
+                <View style={[styles.checkbox, checked && styles.checkboxDone]}>
+                  {checked ? <Text style={styles.checkmark}>✅</Text> : null}
+                </View>
+                <Text style={[styles.itemText, checked && styles.itemTextDone]}>{item}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+      <Modal
+        visible={addModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setAddModalVisible(false)}>
+        <View style={styles.modalRoot}>
+          <Pressable style={styles.modalShade} onPress={() => setAddModalVisible(false)} />
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Add Item</Text>
+              <Pressable onPress={() => setAddModalVisible(false)} style={styles.closeButton}>
+                <Text style={styles.closeText}>✖️</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.inputLabel}>ITEM NAME</Text>
+            <View style={styles.fakeInput}>
+              <Text
+                style={[styles.fakeInputText, !itemTitle && styles.fakePlaceholder]}
+                numberOfLines={1}>
+                {itemTitle || 'e.g. Water filter'}
+              </Text>
+              <Text style={styles.inputCounter}>
+                {itemTitle.length}/{itemLimit}
+              </Text>
+            </View>
+            <CompactKeyboard
+              mode={itemKeyboardMode}
+              shift={itemShift}
+              onToggleMode={() =>
+                setItemKeyboardMode(current => (current === 'letters' ? 'numbers' : 'letters'))
+              }
+              onToggleShift={() => setItemShift(current => !current)}
+              onKey={appendItemTitle}
+              onSpace={addItemSpace}
+              onBackspace={eraseItemTitle}
+            />
+            <PrimaryButton
+              label="Add To Folder"
+              icon="➕"
+              onPress={addItem}
+              disabled={!itemTitle.trim()}
+            />
+          </View>
+        </View>
+      </Modal>
     </Page>
   );
 };
@@ -568,6 +684,31 @@ const styles = StyleSheet.create({
   itemList: {
     gap: 10,
     marginTop: 24,
+  },
+  emptyFolder: {
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 28,
+    padding: 22,
+  },
+  emptyFolderIcon: {
+    fontSize: 42,
+  },
+  emptyFolderTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  emptyFolderText: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  emptyFolderButton: {
+    alignSelf: 'stretch',
+    marginTop: 8,
   },
   itemRow: {
     alignItems: 'center',

@@ -1,5 +1,7 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
+  Animated,
+  Easing,
   Image,
   Pressable,
   SafeAreaView,
@@ -24,6 +26,52 @@ type PageProps = {
   contentStyle?: StyleProp<ViewStyle>;
 };
 
+type FadeInViewProps = {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  delay?: number;
+  duration?: number;
+  distance?: number;
+};
+
+export const FadeInView = ({
+  children,
+  style,
+  delay = 0,
+  duration = 440,
+  distance = 14,
+}: FadeInViewProps) => {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    progress.setValue(0);
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration,
+      delay,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [delay, duration, progress]);
+
+  const translateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [distance, 0],
+  });
+
+  return (
+    <Animated.View style={[style, {opacity: progress, transform: [{translateY}]}]}>
+      {children}
+    </Animated.View>
+  );
+};
+
 export const Page = ({children, withTabs, scroll = true, contentStyle}: PageProps) => {
   const {width} = useWindowDimensions();
   const horizontal = pagePadding(width);
@@ -38,6 +86,7 @@ export const Page = ({children, withTabs, scroll = true, contentStyle}: PageProp
     },
     contentStyle,
   ];
+  const animatedContent = <FadeInView style={content}>{children}</FadeInView>;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -45,11 +94,11 @@ export const Page = ({children, withTabs, scroll = true, contentStyle}: PageProp
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={content}>
-          {children}
+          contentContainerStyle={styles.scrollContent}>
+          {animatedContent}
         </ScrollView>
       ) : (
-        <View style={content}>{children}</View>
+        animatedContent
       )}
     </SafeAreaView>
   );
@@ -264,7 +313,7 @@ const tabs: {key: TabKey; icon: string; label: string}[] = [
 ];
 
 export const BottomTabBar = ({value, onChange}: BottomTabBarProps) => (
-  <View style={[styles.tabBar, {bottom: tabBottom}]}>
+  <FadeInView style={[styles.tabBar, {bottom: tabBottom}]} delay={80} distance={10}>
     {tabs.map(tab => {
       const active = tab.key === value;
       return (
@@ -283,7 +332,7 @@ export const BottomTabBar = ({value, onChange}: BottomTabBarProps) => (
         </Pressable>
       );
     })}
-  </View>
+  </FadeInView>
 );
 
 export const Card = ({
@@ -298,6 +347,9 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   pageContent: {
     flexGrow: 1,

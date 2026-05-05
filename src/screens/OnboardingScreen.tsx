@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import {assets} from '../assets';
-import {PrimaryButton} from '../components/ui';
+import {FadeInView, PrimaryButton} from '../components/ui';
 import {colors} from '../theme/colors';
 import {bottomInset, pagePadding, topInset} from '../theme/layout';
 
@@ -61,10 +61,14 @@ export const OnboardingScreen = ({onFinish}: Props) => {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View pointerEvents="none" style={[styles.hero, {height: heroHeight}]}>
+      <FadeInView
+        key={`hero-${index}`}
+        style={[styles.hero, {height: heroHeight}]}
+        duration={560}
+        distance={0}>
         <Image source={slide.image} resizeMode="cover" style={styles.heroImage} />
         <View style={styles.heroDim} />
-      </View>
+      </FadeInView>
       <View pointerEvents="none" style={[styles.haze, {top: heroHeight - 118}]}>
         <View style={[styles.hazeBand, styles.hazeBandOne]} />
         <View style={[styles.hazeBand, styles.hazeBandTwo]} />
@@ -82,11 +86,18 @@ export const OnboardingScreen = ({onFinish}: Props) => {
               paddingBottom: bottomInset,
             },
           ]}>
-          <Pressable accessibilityRole="button" onPress={onFinish} style={styles.skip}>
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
+          <FadeInView delay={60} distance={8}>
+            <Pressable accessibilityRole="button" onPress={onFinish} style={styles.skip}>
+              <Text style={styles.skipText}>Skip</Text>
+            </Pressable>
+          </FadeInView>
           <View style={styles.spacer} />
-          <View style={[styles.copy, compact && styles.copyCompact]}>
+          <FadeInView
+            key={`copy-${index}`}
+            style={[styles.copy, compact && styles.copyCompact]}
+            delay={100}
+            duration={480}
+            distance={18}>
             <View style={styles.eyebrowRow}>
               <View style={styles.emojiBox}>
                 <Text style={styles.emoji}>{slide.icon}</Text>
@@ -112,7 +123,7 @@ export const OnboardingScreen = ({onFinish}: Props) => {
                 style={styles.nextButton}
               />
             </View>
-          </View>
+          </FadeInView>
         </View>
       </SafeAreaView>
     </View>

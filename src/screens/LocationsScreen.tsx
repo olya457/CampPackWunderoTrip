@@ -1,6 +1,7 @@
 import React, {useMemo, useState} from 'react';
 import {
   ImageBackground,
+  Platform,
   Pressable,
   Share,
   StyleSheet,
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
   hero: {
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: Platform.OS === 'android' ? 46 : 16,
   },
   heroImage: {
     borderBottomLeftRadius: 0,

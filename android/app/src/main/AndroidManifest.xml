@@ -9,7 +9,8 @@
       android:roundIcon="@mipmap/ic_launcher_round"
       android:allowBackup="false"
       android:theme="@style/AppTheme"
-       <meta-data
+      android:supportsRtl="true">
+     <meta-data
     android:name="com.google.android.geo.API_KEY"
     android:value="AIzaSyBO9Q2yXbXH108vm3B7u_7Gn-2PL-TFGfo"/>
       <activity
