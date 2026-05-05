@@ -1,4 +1,4 @@
-package com.camppackwunderotrip
+package com.camp.pack.wundero.trip
 
 import android.app.Application
 import com.facebook.react.PackageList
