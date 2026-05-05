@@ -1,130 +1,234 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, {useEffect, useState} from 'react';
+import {StatusBar, StyleSheet, View} from 'react-native';
+import {BottomTabBar} from './src/components/ui';
+import {useAppStorage} from './src/hooks/useAppStorage';
+import {colors} from './src/theme/colors';
+import type {TabKey} from './src/types/models';
+import {ArticleDetailScreen, ArticlesScreen, QuizScreen} from './src/screens/ArticlesScreen';
+import {ChecklistDetailScreen, ChecklistsScreen} from './src/screens/ChecklistsScreen';
+import {IdeasScreen} from './src/screens/IdeasScreen';
+import {LocationDetailScreen, LocationsScreen} from './src/screens/LocationsScreen';
+import {OnboardingScreen} from './src/screens/OnboardingScreen';
+import {SettingsScreen} from './src/screens/SettingsScreen';
+import {SplashScreen} from './src/screens/SplashScreen';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+type Route =
+  | {name: 'splash'}
+  | {name: 'onboarding'}
+  | {name: 'tabs'}
+  | {name: 'locationDetail'; id: string}
+  | {name: 'checklistDetail'; id: string; isCustom: boolean}
+  | {name: 'articleDetail'; id: string}
+  | {name: 'quiz'};
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const App = (): React.JSX.Element => {
+  const {state, loaded, updateState, clearState} = useAppStorage();
+  const [route, setRoute] = useState<Route>({name: 'splash'});
+  const [tab, setTab] = useState<TabKey>('locations');
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  useEffect(() => {
+    if (!loaded || route.name !== 'splash') {
+      return;
+    }
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+    const timer = setTimeout(() => {
+      setRoute(state.hasOnboarded ? {name: 'tabs'} : {name: 'onboarding'});
+    }, 5000);
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+    return () => clearTimeout(timer);
+  }, [loaded, route.name, state.hasOnboarded]);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const finishOnboarding = () => {
+    updateState(current => ({...current, hasOnboarded: true}));
+    setRoute({name: 'tabs'});
   };
 
-  /*
-   * To keep the template simple and small we're adding padding to prevent view
-   * from rendering under the System UI.
-   * For bigger apps the reccomendation is to use `react-native-safe-area-context`:
-   * https://github.com/AppAndFlow/react-native-safe-area-context
-   *
-   * You can read more about it here:
-   * https://github.com/react-native-community/discussions-and-proposals/discussions/827
-   */
-  const safePadding = '5%';
+  const toggleSaveLocation = (id: string) => {
+    updateState(current => {
+      const saved = current.savedLocationIds.includes(id);
+      return {
+        ...current,
+        savedLocationIds: saved
+          ? current.savedLocationIds.filter(item => item !== id)
+          : [...current.savedLocationIds, id],
+      };
+    });
+  };
+
+  const createCustomChecklist = (title: string, emoji: string) => {
+    updateState(current => ({
+      ...current,
+      customChecklists: [
+        {
+          id: `${Date.now()}`,
+          emoji,
+          title,
+          items: [],
+        },
+        ...current.customChecklists,
+      ],
+    }));
+  };
+
+  const toggleChecklistItem = (key: string, item: string) => {
+    updateState(current => {
+      const completed = current.checklistProgress[key] ?? [];
+      const nextCompleted = completed.includes(item)
+        ? completed.filter(value => value !== item)
+        : [...completed, item];
+      return {
+        ...current,
+        checklistProgress: {
+          ...current.checklistProgress,
+          [key]: nextCompleted,
+        },
+      };
+    });
+  };
+
+  const resetChecklist = (key: string) => {
+    updateState(current => {
+      const nextProgress = {...current.checklistProgress};
+      delete nextProgress[key];
+      return {...current, checklistProgress: nextProgress};
+    });
+  };
+
+  const toggleLikeIdea = (id: string) => {
+    updateState(current => {
+      const liked = current.likedIdeaIds.includes(id);
+      return {
+        ...current,
+        likedIdeaIds: liked
+          ? current.likedIdeaIds.filter(item => item !== id)
+          : [...current.likedIdeaIds, id],
+      };
+    });
+  };
+
+  const createIdea = (title: string, description: string, emoji: string, type: string) => {
+    updateState(current => ({
+      ...current,
+      customIdeas: [
+        {
+          id: `custom-idea-${Date.now()}`,
+          custom: true,
+          emoji,
+          title,
+          description,
+          type,
+        },
+        ...current.customIdeas,
+      ],
+    }));
+  };
+
+  const updateQuizBest = (score: number) => {
+    updateState(current => ({...current, quizBest: Math.max(current.quizBest, score)}));
+  };
+
+  const clearAll = () => {
+    clearState();
+    setTab('locations');
+    setRoute({name: 'onboarding'});
+  };
+
+  const openTab = (next: TabKey) => {
+    setTab(next);
+    setRoute({name: 'tabs'});
+  };
+
+  if (route.name === 'splash') {
+    return <SplashScreen />;
+  }
+
+  if (route.name === 'onboarding') {
+    return <OnboardingScreen onFinish={finishOnboarding} />;
+  }
+
+  if (route.name === 'locationDetail') {
+    return (
+      <LocationDetailScreen
+        locationId={route.id}
+        saved={state.savedLocationIds.includes(route.id)}
+        onBack={() => setRoute({name: 'tabs'})}
+        onToggleSave={toggleSaveLocation}
+      />
+    );
+  }
+
+  if (route.name === 'checklistDetail') {
+    return (
+      <ChecklistDetailScreen
+        state={state}
+        checklistId={route.id}
+        isCustom={route.isCustom}
+        onBack={() => setRoute({name: 'tabs'})}
+        onToggleItem={toggleChecklistItem}
+        onReset={resetChecklist}
+      />
+    );
+  }
+
+  if (route.name === 'articleDetail') {
+    return <ArticleDetailScreen articleId={route.id} onBack={() => setRoute({name: 'tabs'})} />;
+  }
+
+  if (route.name === 'quiz') {
+    return (
+      <QuizScreen
+        quizBest={state.quizBest}
+        onBack={() => setRoute({name: 'tabs'})}
+        onComplete={updateQuizBest}
+      />
+    );
+  }
 
   return (
-    <View style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        style={backgroundStyle}>
-        <View style={{paddingRight: safePadding}}>
-          <Header/>
-        </View>
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            paddingHorizontal: safePadding,
-            paddingBottom: safePadding,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      {tab === 'locations' ? (
+        <LocationsScreen
+          savedIds={state.savedLocationIds}
+          onToggleSave={toggleSaveLocation}
+          onOpen={id => setRoute({name: 'locationDetail', id})}
+        />
+      ) : null}
+      {tab === 'checklists' ? (
+        <ChecklistsScreen
+          state={state}
+          onOpenTemplate={id => setRoute({name: 'checklistDetail', id, isCustom: false})}
+          onOpenCustom={id => setRoute({name: 'checklistDetail', id, isCustom: true})}
+          onCreateCustom={createCustomChecklist}
+        />
+      ) : null}
+      {tab === 'articles' ? (
+        <ArticlesScreen
+          onOpenArticle={id => setRoute({name: 'articleDetail', id})}
+          onStartQuiz={() => setRoute({name: 'quiz'})}
+        />
+      ) : null}
+      {tab === 'ideas' ? (
+        <IdeasScreen state={state} onToggleLike={toggleLikeIdea} onCreateIdea={createIdea} />
+      ) : null}
+      {tab === 'settings' ? (
+        <SettingsScreen
+          state={state}
+          onTogglePush={() =>
+            updateState(current => ({...current, pushEnabled: !current.pushEnabled}))
+          }
+          onClearAll={clearAll}
+        />
+      ) : null}
+      <BottomTabBar value={tab} onChange={openTab} />
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  root: {
+    backgroundColor: colors.background,
+    flex: 1,
   },
 });
 
